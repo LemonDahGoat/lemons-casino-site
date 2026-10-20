@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍋 Lemon's Casino</title>
+<style>
+  :root {
+    --bg: #12140c;
+    --bg2: #1a1e10;
+    --card: #202512;
+    --card2: #283016;
+    --lemon: #f5e642;
+    --lemon-dim: #c4b82e;
+    --rind: #8fce2a;
+    --rind-dark: #5f8f14;
+    --text: #f2f2e8;
+    --muted: #9aa37e;
+    --win: #8fce2a;
+    --loss: #e05555;
+    --gold: #ffd24a;
+    --border: #3a4420;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: radial-gradient(ellipse at top, #1d2410 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2rem;
+    background: linear-gradient(90deg, #1c2210, #232b12, #1c2210);
+    border-bottom: 2px solid var(--rind-dark);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .logo { display: flex; align-items: center; gap: .7rem; }
+  .logo .lemon { font-size: 2.2rem; filter: drop-shadow(0 0 8px rgba(245,230,66,.45)); }
+  .logo h1 { font-size: 1.5rem; color: var(--lemon); letter-spacing: .5px; }
+  .logo h1 span { color: var(--rind); }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .45rem .9rem; border-radius: 999px;
+    font-weight: 700; font-size: .8rem; letter-spacing: .8px;
+    border: 1px solid var(--border); background: var(--bg2); color: var(--muted);
+  }
+  .status-badge .dot { width: .55rem; height: .55rem; border-radius: 50%; background: #666; }
+  .status-badge.online { color: var(--win); border-color: var(--rind-dark); background: #1c2a10; }
+  .status-badge.online .dot { background: var(--win); box-shadow: 0 0 8px var(--win); animation: pulse 1.6s infinite; }
+  .status-badge.offline { color: var(--loss); border-color: #5a2020; background: #2a1212; }
+  .status-badge.offline .dot { background: var(--loss); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.2rem 3rem; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .9rem; margin-bottom: 1.6rem; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.1rem; text-align: center;
+  }
+  .stat-card .val { font-size: 1.45rem; font-weight: 800; color: var(--lemon); }
+  .stat-card .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-top: .2rem; }
+  .stat-card.gold .val { color: var(--gold); }
+  .stat-card.green .val { color: var(--rind); }
+
+  .panels { display: grid; grid-template-columns: 1.4fr 1fr; gap: 1rem; }
+  @media (max-width: 860px) { .panels { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    overflow: hidden; margin-bottom: 1rem;
+  }
+  .panel h2 {
+    font-size: .95rem; padding: .85rem 1.1rem;
+    background: var(--card2); border-bottom: 1px solid var(--border);
+    color: var(--lemon); display: flex; align-items: center; gap: .5rem;
+  }
+  .panel .body { padding: .4rem 0; max-height: 420px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  th { text-align: left; padding: .5rem .9rem; color: var(--muted); font-size: .68rem; text-transform: uppercase; letter-spacing: .8px; }
+  td { padding: .55rem .9rem; border-top: 1px solid #2a3018; }
+  tr:hover td { background: rgba(245,230,66,.03); }
+  .profit { color: var(--win); font-weight: 700; }
+  .loss { color: var(--loss); font-weight: 700; }
+  .game-tag {
+    display: inline-block; padding: .15rem .5rem; border-radius: 6px;
+    background: #313a1a; color: var(--rind); font-size: .74rem; font-weight: 700;
+  }
+  .game-tag.big { background: #4a3a10; color: var(--gold); }
+  .empty { padding: 1.4rem; text-align: center; color: var(--muted); font-size: .85rem; }
+  .medal { font-weight: 800; color: var(--lemon); }
+  footer { text-align: center; padding: 1.4rem; color: var(--muted); font-size: .78rem; }
+  footer .lemon { color: var(--lemon); }
+  .side-col .panel { margin-bottom: 1rem; }
+  .updated { font-size: .68rem; color: var(--muted); padding: .3rem .9rem .6rem; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="lemon">🍋</div>
+    <h1>Lemon's <span>Casino</span></h1>
+  </div>
+  <div id="status-badge" class="status-badge" title="Checking bot status...">
+    <span class="dot"></span><span id="status-text">…</span>
+  </div>
+</header>
+
+<main>
+  <div class="stats-grid">
+    <div class="stat-card green"><div class="val" id="s-players">–</div><div class="lbl">Players</div></div>
+    <div class="stat-card"><div class="val" id="s-gambles">–</div><div class="lbl">Total Gambles</div></div>
+    <div class="stat-card"><div class="val" id="s-wagered">–</div><div class="lbl">Total Wagered</div></div>
+    <div class="stat-card gold"><div class="val" id="s-bigwin">–</div><div class="lbl">Biggest Win</div></div>
+  </div>
+
+  <div class="panels">
+    <div>
+      <div class="panel">
+        <h2>🎰 Live Gambles</h2>
+        <div class="body">
+          <table>
+            <thead><tr><th>Time</th><th>Player</th><th>Game</th><th>Bet</th><th>Payout</th><th>Profit</th></tr></thead>
+            <tbody id="activity-body"><tr><td colspan="6" class="empty">Waiting for the action…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="updated" id="activity-updated"></div>
+      </div>
+      <div class="panel">
+        <h2>💥 High Stakes Plays</h2>
+        <div class="body">
+          <table>
+            <thead><tr><th>Time</th><th>Player</th><th>Game</th><th>Bet</th><th>Payout</th><th>Result</th></tr></thead>
+            <tbody id="high-body"><tr><td colspan="6" class="empty">No high stakes action yet — bets of 5,000+ appear here.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="side-col">
+      <div class="panel">
+        <h2>👑 Top Lemon Tycoons</h2>
+        <div class="body">
+          <table>
+            <thead><tr><th>#</th><th>Player</th><th>Balance</th><th>Won</th></tr></thead>
+            <tbody id="leaders-body"><tr><td colspan="4" class="empty">No players yet.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer><span class="lemon">🍋</span> Lemon's Casino — virtual lemons only, no real money. Play with /help in chat.</footer>
+
+<script>
+  var STATUS_URL = 'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/status.json';
+  var FEED_URL = 'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/feed.json';
+
+  function fmt(n) {
+    n = Number(n) || 0;
+    return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  }
+  function fmtTime(ts) {
+    var d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function profitClass(p) { return Number(p) >= 0 ? 'profit' : 'loss'; }
+
+  function setBadge(online) {
+    var b = document.getElementById('status-badge');
+    var t = document.getElementById('status-text');
+    b.className = 'status-badge ' + (online ? 'online' : 'offline');
+    t.textContent = online ? 'BOT ONLINE' : 'BOT OFFLINE';
+  }
+
+  function renderStats(j) {
+    document.getElementById('s-players').textContent = fmt(j.players);
+    document.getElementById('s-gambles').textContent = fmt(j.total_gambles);
+    document.getElementById('s-wagered').textContent = '🍋 ' + fmt(j.total_wagered);
+    document.getElementById('s-bigwin').textContent = '🍋 ' + fmt(j.biggest_win);
+  }
+
+  function renderActivity(list) {
+    var body = document.getElementById('activity-body');
+    if (!list || !list.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">Waiting for the action…</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < list.length && i < 30; i++) {
+      var a = list[i];
+      html += '<tr>' +
+        '<td>' + fmtTime(a.time) + '</td>' +
+        '<td style="font-weight:700;color:#fff">@' + esc(a.user) + '</td>' +
+        '<td><span class="game-tag' + (a.bet >= 5000 ? ' big' : '') + '">' + esc(a.game) + '</span></td>' +
+        '<td>🍋 ' + fmt(a.bet) + '</td>' +
+        '<td>🍋 ' + fmt(a.payout) + '</td>' +
+        '<td class="' + profitClass(a.profit) + '">' + (a.profit >= 0 ? '+' : '') + fmt(a.profit) + '</td>' +
+        '</tr>';
+    }
+    body.innerHTML = html;
+  }
+
+  function renderLeaders(list) {
+    var body = document.getElementById('leaders-body');
+    if (!list || !list.length) {
+      body.innerHTML = '<tr><td colspan="4" class="empty">No players yet.</td></tr>';
+      return;
+    }
+    var medals = ['🥇', '🥈', '🥉'];
+    var html = '';
+    for (var i = 0; i < list.length && i < 10; i++) {
+      var r = list[i];
+      html += '<tr>' +
+        '<td class="medal">' + (medals[i] || (r.rank || i + 1)) + '</td>' +
+        '<td style="font-weight:700;color:#fff">@' + esc(r.username) + '</td>' +
+        '<td style="color:var(--lemon);font-weight:700">🍋 ' + fmt(r.balance) + '</td>' +
+        '<td class="profit">+' + fmt(r.won) + '</td>' +
+        '</tr>';
+    }
+    body.innerHTML = html;
+  }
+
+  function renderHigh(list) {
+    var body = document.getElementById('high-body');
+    if (!list || !list.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">No high stakes action yet — bets of 5,000+ appear here.</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < list.length && i < 20; i++) {
+      var a = list[i];
+      html += '<tr>' +
+        '<td>' + fmtTime(a.time) + '</td>' +
+        '<td style="font-weight:700;color:#fff">@' + esc(a.user) + '</td>' +
+        '<td><span class="game-tag big">' + esc(a.game) + '</span></td>' +
+        '<td>🍋 ' + fmt(a.bet) + '</td>' +
+        '<td>🍋 ' + fmt(a.payout) + '</td>' +
+        '<td class="' + profitClass(a.profit) + '">' + (a.profit >= 0 ? 'WON +' : 'LOST ') + fmt(Math.abs(a.profit)) + '</td>' +
+        '</tr>';
+    }
+    body.innerHTML = html;
+  }
+
+  async function refresh() {
+    try {
+      var sRes = await fetch(STATUS_URL + '?_=' + Date.now(), { cache: 'no-store' });
+      var s = await sRes.json();
+      var fresh = Date.now() - (Number(s.timestamp) || 0) < 100000;
+      setBadge(!!s.online && fresh);
+      renderStats(s);
+    } catch (e) {
+      setBadge(false);
+    }
+    try {
+      var fRes = await fetch(FEED_URL + '?_=' + Date.now(), { cache: 'no-store' });
+      var f = await fRes.json();
+      renderActivity(f.activity);
+      renderLeaders(f.leaders);
+      renderHigh(f.highstakes);
+      document.getElementById('activity-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch (e) { /* keep last data */ }
+  }
+  refresh();
+  setInterval(refresh, 15000);
+</script>
+</body>
+</html>
