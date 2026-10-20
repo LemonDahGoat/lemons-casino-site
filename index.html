@@ -439,11 +439,22 @@
 </footer>
 
 <script>
-  // raw.githubusercontent.com caches ~5 min and ignores query strings — use the API with a cache-buster instead
-  function statusUrl() { return 'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/status.json?cb=' + Date.now(); }
-  function feedUrl() { return 'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/feed.json?cb=' + Date.now(); }
-  var ghOpts = { headers: { 'Accept': 'application/vnd.github.raw' }, cache: 'no-store' };
+  // Mirrors raced in parallel — pick freshest. api.github.com is last resort (60 unauth req/hr).
+  var STATUS_MIRRORS = [
+    'https://cdn.jsdelivr.net/gh/LemonDahGoat/lemons-casino-status@main/status.json',
+    'https://cdn.statically.io/gh/LemonDahGoat/lemons-casino-status/main/status.json',
+    'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/status.json',
+    'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/status.json'
+  ];
+  var FEED_MIRRORS = [
+    'https://cdn.jsdelivr.net/gh/LemonDahGoat/lemons-casino-status@main/feed.json',
+    'https://cdn.statically.io/gh/LemonDahGoat/lemons-casino-status/main/feed.json',
+    'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/feed.json',
+    'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/feed.json'
+  ];
   var lastIds = {};
+  var lastOkAt = 0;
+  var lastBadge = null;
 
   function fmt(n) {
     n = Number(n) || 0;
@@ -469,10 +480,41 @@
   }
 
   function setBadge(online) {
+    lastBadge = online;
     var b = document.getElementById('status-pill');
     var t = document.getElementById('status-text');
     b.className = 'status-pill ' + (online ? 'online' : 'offline');
     t.textContent = online ? 'HOUSE OPEN' : 'HOUSE CLOSED';
+  }
+
+  function fetchMirror(url) {
+    var opts = { cache: 'no-store' };
+    if (url.indexOf('api.github.com') >= 0) {
+      opts.headers = { 'Accept': 'application/vnd.github.raw' };
+    }
+    var u = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'cb=' + Date.now();
+    return fetch(u, opts).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
+    });
+  }
+
+  // Race all mirrors; resolve with the freshest successful payload (by timestamp).
+  function bestJson(mirrors) {
+    var settled = 0;
+    var best = null;
+    return new Promise(function (resolve, reject) {
+      mirrors.forEach(function (url) {
+        fetchMirror(url).then(function (j) {
+          if (!best || (Number(j.timestamp) || 0) > (Number(best.timestamp) || 0)) best = j;
+        }).catch(function () {}).then(function () {
+          settled++;
+          if (settled === mirrors.length) {
+            if (best) resolve(best); else reject(new Error('all mirrors failed'));
+          }
+        });
+      });
+    });
   }
 
   function renderStats(j) {
@@ -562,17 +604,18 @@
 
   async function refresh() {
     try {
-      var sRes = await fetch(statusUrl(), ghOpts);
-      var s = await sRes.json();
+      var s = await bestJson(STATUS_MIRRORS);
+      lastOkAt = Date.now();
       var fresh = Date.now() - (Number(s.timestamp) || 0) < 100000;
       setBadge(!!s.online && fresh);
       renderStats(s);
     } catch (e) {
-      setBadge(false);
+      // All mirrors down — only flip badge OFF if we've been blind for a while
+      if (lastBadge !== null && Date.now() - lastOkAt > 90000) setBadge(false);
+      else if (lastBadge === null) setBadge(false);
     }
     try {
-      var fRes = await fetch(feedUrl(), ghOpts);
-      var f = await fRes.json();
+      var f = await bestJson(FEED_MIRRORS);
       renderActivity(f.activity);
       renderLeaders(f.leaders);
       renderHigh(f.highstakes);
