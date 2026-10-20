@@ -439,8 +439,10 @@
 </footer>
 
 <script>
-  var STATUS_URL = 'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/status.json';
-  var FEED_URL = 'https://raw.githubusercontent.com/LemonDahGoat/lemons-casino-status/main/feed.json';
+  // raw.githubusercontent.com caches ~5 min and ignores query strings — use the API with a cache-buster instead
+  function statusUrl() { return 'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/status.json?cb=' + Date.now(); }
+  function feedUrl() { return 'https://api.github.com/repos/LemonDahGoat/lemons-casino-status/contents/feed.json?cb=' + Date.now(); }
+  var ghOpts = { headers: { 'Accept': 'application/vnd.github.raw' }, cache: 'no-store' };
   var lastIds = {};
 
   function fmt(n) {
@@ -560,7 +562,7 @@
 
   async function refresh() {
     try {
-      var sRes = await fetch(STATUS_URL + '?_=' + Date.now(), { cache: 'no-store' });
+      var sRes = await fetch(statusUrl(), ghOpts);
       var s = await sRes.json();
       var fresh = Date.now() - (Number(s.timestamp) || 0) < 100000;
       setBadge(!!s.online && fresh);
@@ -569,7 +571,7 @@
       setBadge(false);
     }
     try {
-      var fRes = await fetch(FEED_URL + '?_=' + Date.now(), { cache: 'no-store' });
+      var fRes = await fetch(feedUrl(), ghOpts);
       var f = await fRes.json();
       renderActivity(f.activity);
       renderLeaders(f.leaders);
